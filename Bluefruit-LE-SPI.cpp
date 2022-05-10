@@ -5,6 +5,7 @@ BluefruitLE::BluefruitLE(std::shared_ptr<SPI> _spi, DigitalOut _cs, DigitalIn _i
     , cs(_cs)
     , irq(_irq)
 {
+    init();
 }
 
 BluefruitLE::BluefruitLE(std::shared_ptr<SPI> _spi, std::shared_ptr<BusOut> _csBus, uint8_t _csAddr, DigitalIn _irq)
@@ -14,6 +15,7 @@ BluefruitLE::BluefruitLE(std::shared_ptr<SPI> _spi, std::shared_ptr<BusOut> _csB
     , csAddr(_csAddr)
     , irq(_irq)
 {
+    init();
 }
 
 void BluefruitLE::init()
@@ -26,46 +28,46 @@ void BluefruitLE::init()
     spi->write(txbuf, 4, rxbuf, 0);
     deactivateCS();
 
-    //factory reset
-    printf("BLE: factory reset\r\n");
-    setTXheader(_MSG_COMMAND, _SDEP_ATCOMMAND, 0x0F);
-    txbuf[4] = 'A';
-    txbuf[5] = 'T';
-    txbuf[6] = '+';
-    txbuf[7] = 'F';
-    txbuf[8] = 'A';
-    txbuf[9] = 'C';
-    txbuf[10] = 'T';
-    txbuf[11] = 'O';
-    txbuf[12] = 'R';
-    txbuf[13] = 'Y';
-    txbuf[14] = 'R';
-    txbuf[15] = 'E';
-    txbuf[16] = 'S';
-    txbuf[17] = 'E';
-    txbuf[18] = 'T';
-    activateCS();
-    spi->write(txbuf, 19, rxbuf, 0);
-    deactivateCS();
+    // //factory reset
+    // printf("BLE: factory reset\r\n");
+    // setTXheader(_MSG_COMMAND, _SDEP_ATCOMMAND, 0x0F);
+    // txbuf[4] = 'A';
+    // txbuf[5] = 'T';
+    // txbuf[6] = '+';
+    // txbuf[7] = 'F';
+    // txbuf[8] = 'A';
+    // txbuf[9] = 'C';
+    // txbuf[10] = 'T';
+    // txbuf[11] = 'O';
+    // txbuf[12] = 'R';
+    // txbuf[13] = 'Y';
+    // txbuf[14] = 'R';
+    // txbuf[15] = 'E';
+    // txbuf[16] = 'S';
+    // txbuf[17] = 'E';
+    // txbuf[18] = 'T';
+    // activateCS();
+    // spi->write(txbuf, 19, rxbuf, 0);
+    // deactivateCS();
 
-    wait_us(1000000);
+    // wait_us(1000000);
 
-    fillTX255(0, 8);
-    activateCS();
-    spi->write(txbuf, 8, rxbuf, 8);
-    deactivateCS();
+    // fillTX255(0, 8);
+    // activateCS();
+    // spi->write(txbuf, 8, rxbuf, 8);
+    // deactivateCS();
 
-    for(int i = 0; i < 8; ++i)
-    {
-        printf("%i ", rxbuf[i]);
-    }
-    printf("\r\n");
+    // for(int i = 0; i < 8; ++i)
+    // {
+    //     printf("%i ", rxbuf[i]);
+    // }
+    // printf("\r\n");
 
-    if(!(rxbuf[4] == 'O' && rxbuf[5] == 'K'))
-    {
-        printf("BLE factory reset failed\r\n");
-        while(1);
-    }
+    // if(!(rxbuf[4] == 'O' && rxbuf[5] == 'K'))
+    // {
+    //     printf("BLE factory reset failed\r\n");
+    //     while(1);
+    // }
 
 }
 
@@ -392,7 +394,7 @@ size_t BluefruitLE::tx(char * txbuf, size_t txlen, char * rxbuf)
         {
             tx[4 + i] = txbuf[i + pos];
         }
-        wait_us(50000);
+        wait_us(5000);
         pos += plen;
         activateCS();
         spi->write(tx, 20, rx, 20);
@@ -405,10 +407,10 @@ size_t BluefruitLE::tx(char * txbuf, size_t txlen, char * rxbuf)
     }
 
     size_t timeout = 20; //200ms
-    printf("timeout %i\r\n", timeout);
+    // printf("timeout %i\r\n", timeout);
     while(!irq.read() && timeout--)
     {
-        printf("no irq %i\r\n", timeout);
+        // printf("no irq %i\r\n", timeout);
         wait_us(10000);
     }
     // printf("g\r\n");
@@ -417,7 +419,7 @@ size_t BluefruitLE::tx(char * txbuf, size_t txlen, char * rxbuf)
     while(irq.read())
     {
         // printf("h\r\n");
-        wait_us(50000);
+        wait_us(5000);
 
         for(int i = 0; i < 20; ++i)
         {
