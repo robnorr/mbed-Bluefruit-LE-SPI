@@ -1,4 +1,7 @@
 #include "Bluefruit-LE-SPI.h"
+#include <algorithm>
+#include <iostream>
+#include <ostream>
 
 BluefruitLE::BluefruitLE(std::shared_ptr<SPI> _spi, DigitalOut _cs, DigitalIn _irq)
     : spi(_spi)
@@ -17,6 +20,24 @@ BluefruitLE::BluefruitLE(std::shared_ptr<SPI> _spi, std::shared_ptr<BusOut> _csB
 {
     init();
 }
+
+void BluefruitLE::setupAndConnect(std::string name, std::string baud)
+{
+    echo(false);
+    requestInfo();
+
+    setName(name);
+    wait_us(1000000);
+    while(!isConnected())
+    {
+        //unconnected
+        wait_us(1000000);
+    }
+    wait_us(5000000);
+
+    setBaud(baud);
+}
+
 
 void BluefruitLE::init()
 {
@@ -84,6 +105,14 @@ void BluefruitLE::fillTX255(size_t offset, size_t len)
     for(int i = 0; i < len; ++i)
     {
         txbuf[offset + i] = 0xFF;
+    }
+}
+
+void BluefruitLE::clearRxBuf()
+{
+    for(int i = 0; i < 128; ++i)
+    {
+        rxbuf[i] = 0x00;
     }
 }
 
@@ -287,8 +316,8 @@ void BluefruitLE::setLEDMode(char * mode)
 
 size_t BluefruitLE::rx(char * rx)
 {
-    wait_us(1000000);
-    printf("BLE: rx\r\n");
+    wait_us(5000);
+    // printf("BLE: rx\r\n");
     char tx[32] = { 0 };
     // char rx[32] = { 0 };
     tx[0] = 0x10;
@@ -318,10 +347,10 @@ size_t BluefruitLE::rx(char * rx)
     activateCS();
     spi->write(tx, 24, rx, 24);
     deactivateCS();
-    for(int i = 0; i < 24; ++i)
-    {
-        printf("%i ", rx[i]);
-    }
+    // for(int i = 0; i < 24; ++i)
+    // {
+    //     printf("%i ", rx[i]);
+    // }
     char ok[] = "OK";
     char err[] = "ERROR";
     if((std::search(rx, rx + 24, ok, ok + 1) == rx + 24) && (std::search(rx, rx + 24, err, err + 4) == rx + 24))
@@ -330,15 +359,15 @@ size_t BluefruitLE::rx(char * rx)
         {
             tx[i] = 0xFF;
         }
-        wait_us(100000);
+        wait_us(5000);
         activateCS();
         spi->write(tx, 32, rx, 32);
         deactivateCS();
-        for(int i = 0; i < 32; ++i)
-        {
-            printf("%i ", rx[i]);
-        }
-        printf("\r\n");
+        // for(int i = 0; i < 32; ++i)
+        // {
+        //     printf("%i ", rx[i]);
+        // }
+        // printf("\r\n");
         //26-49
         if((std::search(rx, rx + 32, ok, ok + 1) == rx + 32) && (std::search(rx, rx + 32, err, err + 4) == rx + 32))
         {
@@ -346,15 +375,15 @@ size_t BluefruitLE::rx(char * rx)
             {
                 tx[i] = 0xFF;
             }
-            wait_us(100000);
+            wait_us(5000);
             activateCS();
             spi->write(tx, 32, rx+32, 32);
             deactivateCS();
-            for(int i = 0; i < 32; ++i)
-            {
-                printf("%i ", rx[i]);
-            }
-            printf("\r\n");
+            // for(int i = 0; i < 32; ++i)
+            // {
+            //     printf("%i ", rx[i]);
+            // }
+            // printf("\r\n");
             return 64;
         }
         return 32;
@@ -437,4 +466,50 @@ size_t BluefruitLE::tx(char * txbuf, size_t txlen, char * rxbuf)
     }
     // printf("ret\r\n");
     return rsppos;
+}
+
+void BluefruitLE::setName(std::string name)
+{
+    std::string command = "AT+GAPDEVNAME=" + name;
+    tx(const_cast<char*>(command.c_str()), command.length(), rxbuf);
+}
+
+void BluefruitLE::setBaud(std::string baud)
+{
+    std::string command = "AT+BAUDRATE=" + baud;
+    tx(const_cast<char*>(command.c_str()), command.length(), rxbuf);
+}
+
+void BluefruitLE::send(std::string message)
+{
+    while(message.length() > 128)
+    {
+        send(message.substr(0, 128));
+        message = message.substr(128, message.length() - 128);
+    }
+    std::string command = "AT+BLEUARTTX=" + message;
+    tx(const_cast<char*>(command.c_str()), command.length(), rxbuf);
+}
+
+std::string BluefruitLE::receive()
+{
+    auto len = rx(rxbuf);
+    if(len == 0)
+    {
+        // printf("len = 0");
+        return {};
+    }
+    if(rxbuf[4] == 79 && rxbuf[5] == 75)  // OK
+    {
+        // printf("OK no message");
+        return {};
+    }
+
+    char ok[] = "OK";
+    auto end = std::search(rxbuf, rxbuf + 128, ok, ok + 2);
+    // printf("4: %i, 5: %i, end: %i", rxbuf[4], rxbuf[5], *end);
+    std::string msg{rxbuf + 4, end};
+    // clearRxBuf();
+    return msg;
+    
 }

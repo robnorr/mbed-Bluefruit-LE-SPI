@@ -2,6 +2,7 @@
 
 #include "mbed.h"
 #include <memory>
+#include <string>
 
     
 #define _MSG_COMMAND 0x10
@@ -26,12 +27,21 @@ public:
     size_t rx(char * buf); 
     size_t tx(char * txbuf, size_t txlen, char * rxbuf);
 
+    void setupAndConnect(std::string name, std::string baud = "115200");
+
+    void setName(std::string name);
+    void setBaud(std::string baud);
+
+    void send(std::string message);
+    std::string receive();
+
 private:
     void activateCS();
     void deactivateCS();
 
     void setTXheader(const char type, const uint16_t command, char plen);
     void fillTX255(size_t offset, size_t len);
+    void clearRxBuf();
 
     std::shared_ptr<SPI> spi;
     DigitalOut cs;
@@ -40,10 +50,8 @@ private:
     uint8_t csAddr;
 
     char txbuf[20];
-    char rxbuf[20];
+    char rxbuf[128];
 };
-
-
 
 inline void BluefruitLE::activateCS()
 {
