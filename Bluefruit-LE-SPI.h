@@ -25,14 +25,16 @@ public:
     bool isAtLeastVersion(char*);
     void setLEDMode(char*); //"DISABLE" "MODE" "BLEUART" "HWUART" "SPI" "MANUAL"
     size_t rx(char * buf); 
-    size_t tx(char * txbuf, size_t txlen, char * rxbuf);
+    size_t tx(uint8_t * txbuf, size_t txlen, char * rxbuf);
 
     void setupAndConnect(std::string name, std::string baud = "115200");
 
     void setName(std::string name);
     void setBaud(std::string baud);
 
-    void send(std::string message);
+    // void send(std::string message);
+    void send(uint8_t*, size_t n);
+
     std::string receive();
 
 private:

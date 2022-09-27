@@ -1,5 +1,7 @@
 #include "Bluefruit-LE-SPI.h"
 #include <algorithm>
+#include <array>
+#include <cstdint>
 #include <iostream>
 #include <ostream>
 
@@ -391,13 +393,13 @@ size_t BluefruitLE::rx(char * rx)
     return 0;
 }
 
-size_t BluefruitLE::tx(char * txbuf, size_t txlen, char * rxbuf)
+size_t BluefruitLE::tx(uint8_t * txbuf, size_t txlen, char * rxbuf)
 {
     char tx[20] = { 0 };
     char rx[20] = { 0 };
     bool more = true;
     size_t pos = 0;
-    // printf("a\r\n");
+    // printf("%d\n", txlen);
     if (txlen > 256)
     {
         txlen = 256;
@@ -423,7 +425,7 @@ size_t BluefruitLE::tx(char * txbuf, size_t txlen, char * rxbuf)
         {
             tx[4 + i] = txbuf[i + pos];
         }
-        wait_us(5000);
+        wait_us(1000);
         pos += plen;
         activateCS();
         spi->write(tx, 20, rx, 20);
@@ -435,12 +437,12 @@ size_t BluefruitLE::tx(char * txbuf, size_t txlen, char * rxbuf)
         // printf("\r\n");
     }
 
-    size_t timeout = 20; //200ms
+    size_t timeout = 200; //200ms
     // printf("timeout %i\r\n", timeout);
     while(!irq.read() && timeout--)
     {
         // printf("no irq %i\r\n", timeout);
-        wait_us(10000);
+        wait_us(1000);
     }
     // printf("g\r\n");
 
@@ -448,7 +450,7 @@ size_t BluefruitLE::tx(char * txbuf, size_t txlen, char * rxbuf)
     while(irq.read())
     {
         // printf("h\r\n");
-        wait_us(5000);
+        wait_us(1000);
 
         for(int i = 0; i < 20; ++i)
         {
@@ -470,25 +472,41 @@ size_t BluefruitLE::tx(char * txbuf, size_t txlen, char * rxbuf)
 
 void BluefruitLE::setName(std::string name)
 {
-    std::string command = "AT+GAPDEVNAME=" + name;
-    tx(const_cast<char*>(command.c_str()), command.length(), rxbuf);
+    std::array<uint8_t, 15> prefix{"AT+GAPDEVNAME="};
+    uint8_t command[14 + name.length()];
+    std::copy_n(prefix.data(), 14, command);
+    std::copy_n(name.c_str(), name.size(), command + 14);
+    tx(command, 14 + name.length(), rxbuf);
 }
 
 void BluefruitLE::setBaud(std::string baud)
 {
-    std::string command = "AT+BAUDRATE=" + baud;
-    tx(const_cast<char*>(command.c_str()), command.length(), rxbuf);
+    std::array<uint8_t, 13> prefix{"AT+BAUDRATE="};
+    uint8_t command[12 + baud.length()];
+    std::copy_n(prefix.data(), 12, command);
+    std::copy_n(baud.c_str(), baud.size(), command + 12);
+    tx(command, 12 + baud.length(), rxbuf);
 }
 
-void BluefruitLE::send(std::string message)
+// void BluefruitLE::send(std::string message)
+// {
+//     while(message.length() > 240)
+//     {
+//         send(message.substr(0, 240));
+//         message = message.substr(240, message.length() - 240);
+//     }
+//     std::string command = "AT+BLEUARTTX=" + message;
+//     tx(const_cast<char*>(command.c_str()), command.length(), rxbuf);
+// }
+
+void BluefruitLE::send(uint8_t* message, size_t n)
 {
-    while(message.length() > 128)
-    {
-        send(message.substr(0, 128));
-        message = message.substr(128, message.length() - 128);
-    }
-    std::string command = "AT+BLEUARTTX=" + message;
-    tx(const_cast<char*>(command.c_str()), command.length(), rxbuf);
+    assert(n <= 240);
+    std::array<uint8_t, 14> prefix{"AT+BLEUARTTX="};
+    uint8_t command[13 + n];
+    std::copy_n(prefix.data(), 13, command);
+    std::copy_n(message, n, command + 13);
+    tx(command, 13 + n, rxbuf);
 }
 
 std::string BluefruitLE::receive()
