@@ -57,6 +57,7 @@ private:
 
 inline void BluefruitLE::activateCS()
 {
+    spi->format(8, 0);
     if(cs.is_connected())
     {
         cs = 0;
